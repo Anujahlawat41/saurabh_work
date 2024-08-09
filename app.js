@@ -2,6 +2,9 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const Candidate = require('./Models/candidate');
+const multer = require('multer');
+const path = require('path');
+
 const app = express();
 
 //  middleware
@@ -22,6 +25,16 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/'); //  saved in the 'uploads' folder
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + path.extname(file.originalname)); // Rename the file with current timestamp
+    }
+});
+const upload = multer({ storage: storage });
 
 app.post('/api/candidates', async (req, res) => {
     try {
@@ -32,6 +45,15 @@ app.post('/api/candidates', async (req, res) => {
             candidateData.permanentAddress.street1 = candidateData.residentialAddress.street1;
             candidateData.permanentAddress.street2 = candidateData.residentialAddress.street2;
         }
+        // Handle file upload
+        if (req.files) {
+            candidateData.documents = req.files.map(file => ({
+                fileName: file.filename,
+                fileType: file.mimetype,
+                file: file.path
+            }));
+        }
+
 
         const candidate = new Candidate(candidateData);
         await candidate.save();
